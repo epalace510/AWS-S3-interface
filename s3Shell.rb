@@ -22,15 +22,29 @@ while true
   command.chomp!
   file=nil
   dbucket=nil
+  expireDate=nil
   #Uploads the given file to the currently selected bucket.
   if(command=="upload")
     file=param1
     file.chomp!
-    bucket.objects[file].write(Pathname.new(file))
-    # AWS::S3::S3Object.write(Pathname.new(file))
-    puts "File " + file + " successfully uploaded!"
-    puts file + " can be accessed at "
-    puts bucket.objects[file].url_for(:read)
+    expireDate=param2
+    expireDate.chomp!
+    if(expireDate==nil)
+      bucket.objects[file].write(Pathname.new(file))
+      puts "File " + file + " successfully uploaded!"
+      puts file + " can be accessed at "
+      puts bucket.objects[file].url_for(:read)
+    elsif(expireDate.to_i>1)
+      bucket.objects[file].write(Pathname.new(file))
+      puts "File " + file + " successfully uploaded!"
+      puts file + " can be accessed at "
+      puts bucket.objects[file].url_for(:read)
+      bucket.lifecycle_configuration.replace do
+        add_rule(file, :expiration_time => expireDate.to_i)
+      end
+    else
+      puts 'Expiration Date must be greater than 0.'
+    end
   end
   #deletes (removes) the given file from the currently selected bucket.
   if(command=="rm")
@@ -159,8 +173,12 @@ while true
     expireDate.chomp!
     begin
       if(bucket.objects[file].exists?)
-        bucket.lifecycle_configuration.update do
-          add_rule(file, :expiration_time => expireDate.to_i)
+        if(expireDate.to_i>1)
+          bucket.lifecycle_configuration.update do
+            add_rule(file, :expiration_time => expireDate.to_i)
+          end
+        else
+          puts 'Expiration date cannot be less than 1.'
         end
       else
         puts 'File does not exist.'
