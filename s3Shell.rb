@@ -17,8 +17,10 @@ end
 #file = ARGV.first
 while true
   #command is self explanatory. param1 and param2 are used for different things, depending on the command.
-  #if there aren't enough values in gets, then the unused params are left nil.
-  command, param1, param2 = gets.split
+  #if there aren't enough values in gets, then the unused params are left nil. (But are put to nil just in case)
+  #flag is for reduced redundancy. May have other functions in the future.
+  flag=nil
+  command, param1, param2, flag = gets.split
   command.chomp!
   file=nil
   dbucket=nil
@@ -28,14 +30,33 @@ while true
     file=param1
     file.chomp!
     expireDate=param2
-    expireDate.chomp!
+    unless(expireDate==nil)
+      expireDate.chomp!
+    end
+    unless(flag==nil)
+      flag.chomp!
+    end
     if(expireDate==nil)
       bucket.objects[file].write(Pathname.new(file))
       puts "File " + file + " successfully uploaded!"
       puts file + " can be accessed at "
       puts bucket.objects[file].url_for(:read)
-    elsif(expireDate.to_i>1)
+    elsif(expireDate=="-rr")
+      bucket.objects[file].write(Pathname.new(file), :reduced_redundancy => true)
+      puts "File " + file + " successfully uploaded!"
+      puts file + " can be accessed at "
+      puts bucket.objects[file].url_for(:read)
+    elsif(expireDate.to_i>1 and flag==nil)
+      puts "dicks dicks dicks"
       bucket.objects[file].write(Pathname.new(file))
+      puts "File " + file + " successfully uploaded!"
+      puts file + " can be accessed at "
+      puts bucket.objects[file].url_for(:read)
+      bucket.lifecycle_configuration.replace do
+        add_rule(file, :expiration_time => expireDate.to_i)
+      end
+    elsif(expireDate.to_i>1 and flag=="-rr")
+      bucket.objects[file].write(Pathname.new(file), :reduced_redundancy => true)
       puts "File " + file + " successfully uploaded!"
       puts file + " can be accessed at "
       puts bucket.objects[file].url_for(:read)
@@ -47,9 +68,7 @@ while true
     end
   end
   #deletes (removes) the given file from the currently selected bucket.
-  if(command=="rm")
-    file=param1
-    file.chomp!
+  if(command=="rm") file=param1 file.chomp!
     puts "Are you sure you want to remove \"" + file + "\" from " + bucket.name + "? (y/n)"
     #double checking to make sure. Unlike Unix, I didn't implement the -f flag.
     while true
@@ -100,7 +119,7 @@ while true
   if(command=="cd")
     dbucket=param1
     dbucket.chomp!
-    unless(bucket_check(dbucket))
+    if(bucket_check(dbucket))
       bucket=@s3.buckets[dbucket]
     else
       puts 'No such bucket.'
@@ -110,7 +129,7 @@ while true
     dbucket=param1
     dbucket.chomp!
     dbucket.downcase
-    unless(bucket_check(dbucket))
+    if(bucket_check(dbucket))
       @s3.buckets.create(dbucket)
       puts 'Bucket ' + dbucket + ' created.'
     else
@@ -195,5 +214,7 @@ while true
   end
   if(command=="exit")
     break
+  else
+    puts command + " is not a recognized command."
   end
 end
