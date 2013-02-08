@@ -68,9 +68,8 @@ while true
         puts 'Expiration Date must be greater than 0.'
       end
     end
-  end
   #deletes (removes) the given file from the currently selected bucket.
-  if(command=="rm")
+  elsif(command=="rm")
     file=param1
     unless(file==nil)
       file.chomp!
@@ -91,14 +90,12 @@ while true
         end
       end
     end
-  end
   #lists the objects in the current bucket.
-  if(command=="ls")
+  elsif(command=="ls")
     bucket.objects.each do |obj|
       puts obj.key
     end
-  end
-  if(command=="cp")
+  elsif(command=="cp")
     file=param1
     unless(file==nil)
       file.chomp!
@@ -123,11 +120,9 @@ while true
         puts 'File ' + file + ' copied to ' + dbucket
       end
     end
-  end
-  if(command=="pwd")
+  elsif(command=="pwd")
     puts bucket.name
-  end
-  if(command=="cd")
+  elsif(command=="cd")
     dbucket=param1
     unless(dbucket==nil)
       dbucket.chomp!
@@ -137,26 +132,23 @@ while true
         puts 'No such bucket.'
       end
     end
-  end
-  if(command=="mkdir")
+  elsif(command=="mkdir")
     dbucket=param1
     unless(dbucket==nil)
       dbucket.chomp!
       dbucket.downcase
-      if(bucket_check(dbucket))
+      if(!bucket_check(dbucket))
         @s3.buckets.create(dbucket)
         puts 'Bucket ' + dbucket + ' created.'
       else
         puts 'Bucket already exists. Cannot create duplicate buckets.'
       end
     end
-  end
-  if(command=="lsbkt")
+  elsif(command=="lsbkt")
     @s3.buckets.each do |dbucket|
       puts dbucket.name
     end
-  end
-  if(command=="rmdir")
+  elsif(command=="rmdir")
     dbucket=param1
     unless(dbucket==nil)
       dbucket.chomp!
@@ -182,15 +174,13 @@ while true
         puts 'Bucket does not exist, so cannot be deleted.'
       end
     end
-  end
-  if(command=="exists?")
+  elsif(command=="exists?")
     dbucket=param1
     unless(dbucket==nil)
       dbucket.chomp!
       puts bucket_check(dbucket)
     end
-  end
-  if(command=="permission?")
+  elsif(command=="permission?")
     dbucket=param1
     unless(dbucket==nil)
       dbucket.chomp!
@@ -205,8 +195,7 @@ while true
         end
       end
     end
-  end
-  if(command=="SetExpire")
+  elsif(command=="SetExpire")
     file = param1
     expireDate = param2
     unless(file==nil or expireDate==nil)
@@ -226,6 +215,7 @@ while true
         end
       rescue AWS::S3::Errors::InvalidRequest => e
         if(bucket.objects[file].exists?)
+          ex_id = bucket.objects[file].expiration_rule_id
           bucket.lifecycle_configuration.replace do
             add_rule(file, :expiration_time => expireDate.to_i)
           end
@@ -234,8 +224,16 @@ while true
         end
       end
     end
-  end
-  if(command=="exit")
+  elsif(command=="head")
+    file = param1
+    unless(file==nil)
+      if(bucket.objects[file].exists?)
+        puts bucket.objects[file].head
+      else
+        puts "No such file."
+      end
+    end
+  elsif(command=="exit")
     break
   else
     puts command + " is not a recognized command."
