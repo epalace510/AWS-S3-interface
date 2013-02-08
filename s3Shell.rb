@@ -28,61 +28,67 @@ while true
   #Uploads the given file to the currently selected bucket.
   if(command=="upload")
     file=param1
-    file.chomp!
-    expireDate=param2
-    unless(expireDate==nil)
-      expireDate.chomp!
-    end
-    unless(flag==nil)
-      flag.chomp!
-    end
-    if(expireDate==nil)
-      bucket.objects[file].write(Pathname.new(file))
-      puts "File " + file + " successfully uploaded!"
-      puts file + " can be accessed at "
-      puts bucket.objects[file].url_for(:read)
-    elsif(expireDate=="-rr")
-      bucket.objects[file].write(Pathname.new(file), :reduced_redundancy => true)
-      puts "File " + file + " successfully uploaded!"
-      puts file + " can be accessed at "
-      puts bucket.objects[file].url_for(:read)
-    elsif(expireDate.to_i>1 and flag==nil)
-      puts "dicks dicks dicks"
-      bucket.objects[file].write(Pathname.new(file))
-      puts "File " + file + " successfully uploaded!"
-      puts file + " can be accessed at "
-      puts bucket.objects[file].url_for(:read)
-      bucket.lifecycle_configuration.replace do
-        add_rule(file, :expiration_time => expireDate.to_i)
+    unless(file==nil)
+      file.chomp!
+      expireDate=param2
+      unless(expireDate==nil)
+        expireDate.chomp!
       end
-    elsif(expireDate.to_i>1 and flag=="-rr")
-      bucket.objects[file].write(Pathname.new(file), :reduced_redundancy => true)
-      puts "File " + file + " successfully uploaded!"
-      puts file + " can be accessed at "
-      puts bucket.objects[file].url_for(:read)
-      bucket.lifecycle_configuration.replace do
-        add_rule(file, :expiration_time => expireDate.to_i)
+      unless(flag==nil)
+        flag.chomp!
       end
-    else
-      puts 'Expiration Date must be greater than 0.'
+      if(expireDate==nil)
+        bucket.objects[file].write(Pathname.new(file))
+        puts "File " + file + " successfully uploaded!"
+        puts file + " can be accessed at "
+        puts bucket.objects[file].url_for(:read)
+      elsif(expireDate=="-rr")
+        bucket.objects[file].write(Pathname.new(file), :reduced_redundancy => true)
+        puts "File " + file + " successfully uploaded!"
+        puts file + " can be accessed at "
+        puts bucket.objects[file].url_for(:read)
+      elsif(expireDate.to_i>1 and flag==nil)
+        puts "dicks dicks dicks"
+        bucket.objects[file].write(Pathname.new(file))
+        puts "File " + file + " successfully uploaded!"
+        puts file + " can be accessed at "
+        puts bucket.objects[file].url_for(:read)
+        bucket.lifecycle_configuration.replace do
+          add_rule(file, :expiration_time => expireDate.to_i)
+        end
+      elsif(expireDate.to_i>1 and flag=="-rr")
+        bucket.objects[file].write(Pathname.new(file), :reduced_redundancy => true)
+        puts "File " + file + " successfully uploaded!"
+        puts file + " can be accessed at "
+        puts bucket.objects[file].url_for(:read)
+        bucket.lifecycle_configuration.replace do
+          add_rule(file, :expiration_time => expireDate.to_i)
+        end
+      else
+        puts 'Expiration Date must be greater than 0.'
+      end
     end
   end
   #deletes (removes) the given file from the currently selected bucket.
-  if(command=="rm") file=param1 file.chomp!
-    puts "Are you sure you want to remove \"" + file + "\" from " + bucket.name + "? (y/n)"
-    #double checking to make sure. Unlike Unix, I didn't implement the -f flag.
-    while true
-      check=gets
-      check.chomp!
-      if(check=="y")
-        bucket.objects[file].delete
-        puts file +" removed."
-        break
-      elsif(check=="n")
-        puts "Operation aborted."
-        break
-      else
-        puts "Command not recognized"
+  if(command=="rm")
+    file=param1
+    unless(file==nil)
+      file.chomp!
+      puts "Are you sure you want to remove \"" + file + "\" from " + bucket.name + "? (y/n)"
+      #double checking to make sure. Unlike Unix, I didn't implement the -f flag.
+      while true
+        check=gets
+        check.chomp!
+        if(check=="y")
+          bucket.objects[file].delete
+          puts file +" removed."
+          break
+        elsif(check=="n")
+          puts "Operation aborted."
+          break
+        else
+          puts "Command not recognized"
+        end
       end
     end
   end
@@ -94,23 +100,28 @@ while true
   end
   if(command=="cp")
     file=param1
-    file.chomp!
-    dbucket=param2
-    if(dbucket==nil and bucket.objects[file].exists?)
-      File.open(file, 'w') do |filename|
-        bucket.objects[file].read do |chunk|
-          filename.write(chunk)
-        end
+    unless(file==nil)
+      file.chomp!
+      dbucket=param2
+      if(dbucket!=nil)
+        dbucket.chomp!
       end
-      puts "File " +file+ " written."
-    elsif(bucket_check(dbucket))
-      puts 'The destination bucket does not exits.'
-    elsif(!bucket.objects[file].exists?)
-      puts "The file does not exist."
-    else
-      dbucket.chomp!
-      bucket.objects[file].copy_to(file,{:bucket=>@s3.buckets[dbucket]})
-      puts 'File ' + file + ' copied to ' + dbucket
+      if(dbucket==nil and bucket.objects[file].exists?)
+        File.open(file, 'w') do |filename|
+          bucket.objects[file].read do |chunk|
+            filename.write(chunk)
+          end
+        end
+        puts "File " +file+ " written."
+      elsif(!bucket_check(dbucket))
+        puts 'The destination bucket does not exits.'
+      elsif(!bucket.objects[file].exists?)
+        puts "The file does not exist."
+      else
+        dbucket.chomp!
+        bucket.objects[file].copy_to(file,{:bucket=>@s3.buckets[dbucket]})
+        puts 'File ' + file + ' copied to ' + dbucket
+      end
     end
   end
   if(command=="pwd")
@@ -118,22 +129,26 @@ while true
   end
   if(command=="cd")
     dbucket=param1
-    dbucket.chomp!
-    if(bucket_check(dbucket))
-      bucket=@s3.buckets[dbucket]
-    else
-      puts 'No such bucket.'
+    unless(dbucket==nil)
+      dbucket.chomp!
+      if(bucket_check(dbucket))
+        bucket=@s3.buckets[dbucket]
+      else
+        puts 'No such bucket.'
+      end
     end
   end
   if(command=="mkdir")
     dbucket=param1
-    dbucket.chomp!
-    dbucket.downcase
-    if(bucket_check(dbucket))
-      @s3.buckets.create(dbucket)
-      puts 'Bucket ' + dbucket + ' created.'
-    else
-      puts 'Bucket already exists. Cannot create duplicate buckets.'
+    unless(dbucket==nil)
+      dbucket.chomp!
+      dbucket.downcase
+      if(bucket_check(dbucket))
+        @s3.buckets.create(dbucket)
+        puts 'Bucket ' + dbucket + ' created.'
+      else
+        puts 'Bucket already exists. Cannot create duplicate buckets.'
+      end
     end
   end
   if(command=="lsbkt")
@@ -143,72 +158,80 @@ while true
   end
   if(command=="rmdir")
     dbucket=param1
-    dbucket.chomp!
-    if(bucket_check(dbucket))
-      puts 'Are you sure you want to delete the bucket' + dbucket  + ' and all its contents? (y/n)'
-      while true
-        check=gets
-        check.chomp!
-        if(check=="y")
-          dbucket = @s3.buckets[dbucket]
-          dbucket.clear!
-          dbucket.delete
-          puts "Bucket deleted."
-          break
-        elsif(check=="n")
-          puts "Operation aborted."
-          break
-        else
-          puts "Command not recognized"
+    unless(dbucket==nil)
+      dbucket.chomp!
+      if(bucket_check(dbucket))
+        puts 'Are you sure you want to delete the bucket' + dbucket  + ' and all its contents? (y/n)'
+        while true
+          check=gets
+          check.chomp!
+          if(check=="y")
+            dbucket = @s3.buckets[dbucket]
+            dbucket.clear!
+            dbucket.delete
+            puts "Bucket deleted."
+            break
+          elsif(check=="n")
+            puts "Operation aborted."
+            break
+          else
+            puts "Command not recognized"
+          end
         end
+      else
+        puts 'Bucket does not exist, so cannot be deleted.'
       end
-    else
-      puts 'Bucket does not exist, so cannot be deleted.'
     end
   end
   if(command=="exists?")
     dbucket=param1
-    dbucket.chomp!
-    puts bucket_check(dbucket)
+    unless(dbucket==nil)
+      dbucket.chomp!
+      puts bucket_check(dbucket)
+    end
   end
   if(command=="permission?")
     dbucket=param1
-    dbucket.chomp!
-    unless(bucket_check(dbucket))
-      puts 'Bucket does not exist.'
-    else
-      begin
-        aclTest=@s3.buckets[dbucket].acl
-        puts 'You have permissions for this bucket.'
-      rescue AWS::S3::Errors::AccessDenied => e
-        puts 'You do not have access to this bucket.'
+    unless(dbucket==nil)
+      dbucket.chomp!
+      unless(bucket_check(dbucket))
+        puts 'Bucket does not exist.'
+      else
+        begin
+          aclTest=@s3.buckets[dbucket].acl
+          puts 'You have permissions for this bucket.'
+        rescue AWS::S3::Errors::AccessDenied => e
+          puts 'You do not have access to this bucket.'
+        end
       end
     end
   end
   if(command=="SetExpire")
     file = param1
-    file.chomp!
     expireDate = param2
-    expireDate.chomp!
-    begin
-      if(bucket.objects[file].exists?)
-        if(expireDate.to_i>1)
-          bucket.lifecycle_configuration.update do
+    unless(file==nil or expireDate==nil)
+      file.chomp!
+      expireDate.chomp!
+      begin
+        if(bucket.objects[file].exists?)
+          if(expireDate.to_i>1)
+            bucket.lifecycle_configuration.update do
+              add_rule(file, :expiration_time => expireDate.to_i)
+            end
+          else
+            puts 'Expiration date cannot be less than 1.'
+          end
+        else
+          puts 'File does not exist.'
+        end
+      rescue AWS::S3::Errors::InvalidRequest => e
+        if(bucket.objects[file].exists?)
+          bucket.lifecycle_configuration.replace do
             add_rule(file, :expiration_time => expireDate.to_i)
           end
         else
-          puts 'Expiration date cannot be less than 1.'
+          puts 'File does not exist.'
         end
-      else
-        puts 'File does not exist.'
-      end
-    rescue AWS::S3::Errors::InvalidRequest => e
-      if(bucket.objects[file].exists?)
-        bucket.lifecycle_configuration.replace do
-          add_rule(file, :expiration_time => expireDate.to_i)
-        end
-      else
-        puts 'File does not exist.'
       end
     end
   end
