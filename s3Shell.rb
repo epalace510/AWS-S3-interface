@@ -233,6 +233,9 @@ while true
         puts "No such file."
       end
     end
+  elsif(command=="version")
+    bucket.enable_versioning
+    puts "Current bucket is now versioned."
   elsif(command=="exit")
     break
   else
