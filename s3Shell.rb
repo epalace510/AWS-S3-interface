@@ -48,21 +48,28 @@ while true
         puts file + " can be accessed at "
         puts bucket.objects[file].url_for(:read)
       elsif(expireDate.to_i>1 and flag==nil)
-        puts "dicks dicks dicks"
-        bucket.objects[file].write(Pathname.new(file))
-        puts "File " + file + " successfully uploaded!"
-        puts file + " can be accessed at "
-        puts bucket.objects[file].url_for(:read)
-        bucket.lifecycle_configuration.replace do
-          add_rule(file, :expiration_time => expireDate.to_i)
+        begin
+          bucket.objects[file].write(Pathname.new(file))
+          puts "File " + file + " successfully uploaded!"
+          puts file + " can be accessed at "
+          puts bucket.objects[file].url_for(:read)
+          bucket.lifecycle_configuration.replace do
+            add_rule(file, :expiration_time => expireDate.to_i)
+          end
+        rescue AWS::S3::Errors::InvalidBucketState
+          puts 'File cannot have a set expiration date because the bucket is versioned.'
         end
       elsif(expireDate.to_i>1 and flag=="-rr")
-        bucket.objects[file].write(Pathname.new(file), :reduced_redundancy => true)
-        puts "File " + file + " successfully uploaded!"
-        puts file + " can be accessed at "
-        puts bucket.objects[file].url_for(:read)
-        bucket.lifecycle_configuration.replace do
-          add_rule(file, :expiration_time => expireDate.to_i)
+        begin
+          bucket.objects[file].write(Pathname.new(file), :reduced_redundancy => true)
+          puts "File " + file + " successfully uploaded!"
+          puts file + " can be accessed at "
+          puts bucket.objects[file].url_for(:read)
+          bucket.lifecycle_configuration.replace do
+            add_rule(file, :expiration_time => expireDate.to_i)
+          end
+        rescue AWS::S3::Errors::InvalidBucketState
+          puts 'File cannot have a set expiration date because the bucket is versioned.'
         end
       else
         puts 'Expiration Date must be greater than 0.'
@@ -71,22 +78,54 @@ while true
   #deletes (removes) the given file from the currently selected bucket.
   elsif(command=="rm")
     file=param1
+    #dbucket isn't actually the destination bucket. I just used it for simplicity and efficiency.
+    #In this case, dbucket is actually the version to be deleted.
+    dbucket=param2
     unless(file==nil)
       file.chomp!
-      puts "Are you sure you want to remove \"" + file + "\" from " + bucket.name + "? (y/n)"
-      #double checking to make sure. Unlike Unix, I didn't implement the -f flag.
-      while true
-        check=gets
-        check.chomp!
-        if(check=="y")
-          bucket.objects[file].delete
-          puts file +" removed."
-          break
-        elsif(check=="n")
-          puts "Operation aborted."
-          break
+      if(dbucket==nil)
+        puts "Are you sure you want to remove \"" + file + "\" from " + bucket.name + "? (y/n)"
+        #double checking to make sure. Unlike Unix, I didn't implement the -f flag.
+        while true
+          check=gets
+          check.chomp!
+          if(check=="y")
+            bucket.objects[file].delete
+            puts file +" removed."
+            break
+          elsif(check=="n")
+            puts "Operation aborted."
+            break
+          else
+            puts "Command not recognized"
+          end
+        end
+      elsif(flag!=nil)
+        flag.chomp!
+        dbucket.chomp!
+        if(bucket.versioning_enabled?)
+          if(flag=="-v")
+            puts "Are you sure you want to remove \"" + file + "\" from " + bucket.name + "? (y/n)"
+            #double checking to make sure. Unlike Unix, I didn't implement the -f flag.
+            while true
+              check=gets
+              check.chomp!
+              if(check=="y")
+                bucket.objects[file].versions[dbucket].delete
+                puts file +" version " + dbucket + " removed."
+                break
+              elsif(check=="n")
+                puts "Operation aborted."
+                break
+              else
+                puts "Command not recognized"
+              end
+            end
+          else
+            puts 'Flag not recognized.'
+          end
         else
-          puts "Command not recognized"
+          puts 'Versioning is not enabled on this bucket.'
         end
       end
     end
@@ -198,31 +237,35 @@ while true
   elsif(command=="SetExpire")
     file = param1
     expireDate = param2
-    unless(file==nil or expireDate==nil)
-      file.chomp!
-      expireDate.chomp!
-      begin
-        if(bucket.objects[file].exists?)
-          if(expireDate.to_i>1)
-            bucket.lifecycle_configuration.update do
+    begin
+      unless(file==nil or expireDate==nil)
+        file.chomp!
+        expireDate.chomp!
+        begin
+          if(bucket.objects[file].exists?)
+            if(expireDate.to_i>1)
+              bucket.lifecycle_configuration.update do
+                add_rule(file, :expiration_time => expireDate.to_i)
+              end
+            else
+              puts 'Expiration date cannot be less than 1.'
+            end
+          else
+            puts 'File does not exist.'
+          end
+        rescue AWS::S3::Errors::InvalidRequest => e
+          if(bucket.objects[file].exists?)
+            ex_id = bucket.objects[file].expiration_rule_id
+            bucket.lifecycle_configuration.replace do
               add_rule(file, :expiration_time => expireDate.to_i)
             end
           else
-            puts 'Expiration date cannot be less than 1.'
+            puts 'File does not exist.'
           end
-        else
-          puts 'File does not exist.'
-        end
-      rescue AWS::S3::Errors::InvalidRequest => e
-        if(bucket.objects[file].exists?)
-          ex_id = bucket.objects[file].expiration_rule_id
-          bucket.lifecycle_configuration.replace do
-            add_rule(file, :expiration_time => expireDate.to_i)
-          end
-        else
-          puts 'File does not exist.'
         end
       end
+    rescue AWS::S3::Errors::InvalidBucketState
+      puts 'File cannot have a set expiration date because the bucket is versioned.'
     end
   elsif(command=="head")
     file = param1
@@ -234,8 +277,48 @@ while true
       end
     end
   elsif(command=="version")
-    bucket.enable_versioning
-    puts "Current bucket is now versioned."
+    begin
+      unless(bucket.versioning_enabled?)
+        bucket.enable_versioning
+        puts "Current bucket is now versioned."
+      else
+        puts "Bucket is already versioned."
+      end
+    rescue AWS::S3::Errors::InvalidBucketState
+      puts 'Bucket cannot be versioned because it is configured for expiration.'
+    end
+  elsif(command=="unversion")
+    if(bucket.versioning_enabled?)
+      bucket.suspend_versioning
+      puts "Bucket is no longer versioned."
+    else
+      puts "Bucket is already not versioned."
+    end
+  elsif(command=="lsvrsn")
+    file = param1
+    unless(file==nil)
+      file.chomp!
+      if(bucket.objects[file].exists?)
+        if(bucket.versioning_enabled?)
+          object=bucket.objects[file]
+          object.versions.each do |version| puts version.version_id end
+          puts "Latest version of the file is "
+          puts object.versions.latest.version_id
+        else
+          puts 'Versioning is not enabled on this bucket.'
+        end
+      else
+        puts 'File does not exist.'
+      end
+    else
+      puts 'No file provided.'
+    end
+  elsif(command=="versioning?")
+    if(bucket.versioning_enabled?)
+      puts 'Versioning is enabled for this bucket.'
+    else
+      puts 'Versioning is not enabled for this bucket.'
+    end
   elsif(command=="exit")
     break
   else
