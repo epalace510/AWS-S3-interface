@@ -319,6 +319,94 @@ while true
     else
       puts 'Versioning is not enabled for this bucket.'
     end
+  elsif(command=="man")
+    if(file=="exists?")
+      puts 'Usage: exists? [target bucket]'
+    end
+    file=param1
+    unless(file==nil)
+      if(file=="man")
+        puts 'Usage: "man [command]"'
+        puts 'to see a help page for that command.'
+      end
+      if(file=="upload")
+        puts 'Usage: "upload [path/filename] ["expiration time] [flag]'
+        puts 'Expiration time and flag are optional inputs. Only accepted flag is "-rr" (reduced redundancy).'
+        puts 'Expiration time sets the expiration time as [expiration time] days from the current date.'
+        puts 'Files in version controlled buckets cannot have an expiration time.'
+      end
+      if(file=="rm")
+        puts 'Usage: rm [path/filename] [version] [flag]'
+        puts 'Version and flag is optional. Version will only be used if the -v flag is provided.'
+      end
+      if(file=="ls")
+        puts 'Usage: ls'
+        puts 'Lists all file in the current bucket.'
+      end
+      if(file=="cp")
+        puts 'Usage: cp [path/filename] [destination bucket]'
+        puts 'Destination bucket is optional. If provided, it will copy the chosen file to the destination bucket. If not provided, it will download a copy of the file to the current directory.'
+      end
+      if(file=="pwd")
+        puts 'Usage: pwd'
+        puts 'Prints the current directory (bucket).'
+      end
+      if(file=="cd")
+        puts 'Usage: cd [destination bucket]'
+        puts 'Changes the current directory (bucket) to the provided bucket.'
+      end
+      if(file=="mkdir")
+        puts 'Usage: mkdir [Bucket name]'
+        puts 'Creates a bucket with the provided name. Buckets cannot have the same name as any other bucket.'
+        puts 'Bucket names will be forced to lower case.'
+      end
+      if(file=="lsbkt")
+        puts 'Usage: lsbkt'
+        puts 'Lists the buckets you own.'
+      end
+      if(file=="rmdir")
+        puts 'Usage: rmdir [target directory]'
+        puts 'Deletes the provided directory (if you have the permission to do so.'
+      end
+      if(file=="exists?")
+        puts 'Usage: exists? [target bucket]'
+        puts 'Checks to see if a bucket exists of the name provided.'
+        puts 'Outputs true or false.'
+      end
+      if(file=="permission?")
+        puts 'Usage: permission? [target bucket]'
+        puts 'Checks to see if you have permission for the bucket of the name provided.'
+        puts 'Outputs true or false.'
+      end
+      if(file=="SetExpire")
+        puts 'Usage: SetExpire [filename] [Expiration time]'
+        puts 'Sets an expiration time for a named file in the current bucket to be [Expiration time] days in the future.'
+        puts 'Cannot be used on buckets with versioning.'
+      end
+      if(file=="head")
+        puts 'Usage: head [filename]'
+        puts 'Outputs the head information of the given file.'
+      end
+      if(file=="version")
+        puts 'Usage: version'
+        puts 'Enables versioning on the current bucket. Cannot be used if files in the bucket have expiration dates.'
+        puts 'See "unversion" for information on disabling versioning.'
+      end
+      if(file=="unversion")
+        puts 'Usage: unversion'
+        puts 'Disables versioning on the current bucket. See "version" for information on versioning a bucket.'
+      end
+      if(file=="lsvrsn")
+        puts 'Usage: lsvrsn [filename]'
+        puts 'Lists all version IDs and the current version of the named object.'
+      end
+      if(file=="versioning?")
+        puts 'Usage: versioning?'
+        puts 'Tests if the current bucket has versioning enabled.'
+      end
+    else
+      puts 'Incorrect usage of man. For proper usage see "man man"'
+    end
   elsif(command=="exit")
     break
   else
